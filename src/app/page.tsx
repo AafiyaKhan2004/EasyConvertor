@@ -57,8 +57,24 @@ export default function LandingPage() {
               <Card>
                 <CardHeader className="items-center">
                   <div className="p-3 bg-primary/10 rounded-full">
+<<<<<<< HEAD
                     <Download className="h-8 w-8 text-primary" />
                   </div>
+=======
+                    <FileImage className="h-8 w-8 text-primary" />
+                  </div>
+                  <CardTitle className="mt-4">Custom Page Sizes</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center text-muted-foreground">
+                  Each page in the PDF is perfectly sized to match its image dimensions.
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="items-center">
+                   <div className="p-3 bg-primary/10 rounded-full">
+                    <Download className="h-8 w-8 text-primary" />
+                  </div>
+>>>>>>> bc3e5ea (changes for hosting)
                   <CardTitle className="mt-4">Instant Download</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center text-muted-foreground">
@@ -106,6 +122,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+<<<<<<< HEAD
         <section id="privacy" className="py-20 md:py-32 bg-secondary">
           <div className="container mx-auto px-4 text-center max-w-4xl">
             <div className="flex justify-center mb-4">
@@ -119,6 +136,9 @@ export default function LandingPage() {
         </section>
 
         <section className="py-20 md:py-32 bg-background">
+=======
+        <section className="py-20 md:py-32 bg-secondary">
+>>>>>>> bc3e5ea (changes for hosting)
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Start?</h2>
             <p className="text-lg text-muted-foreground mb-8">
