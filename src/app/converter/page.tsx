@@ -4,10 +4,12 @@
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { UploadCloud, FileDown, GripVertical, X, Loader2, Home } from 'lucide-react';
+import { UploadCloud, FileDown, GripVertical, X, Loader2, Home, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast"
 import { Metadata } from 'next';
@@ -18,6 +20,12 @@ type ImageFile = {
   id: string;
   file: File;
   preview: string;
+};
+
+const PAGE_SIZES: { [key: string]: { width: number, height: number } } = {
+  a4: { width: 595.28, height: 841.89 },
+  a3: { width: 841.89, height: 1190.55 },
+  letter: { width: 612, height: 792 },
 };
 
 function AdSlot() {
@@ -75,6 +83,7 @@ function AdSlot() {
 export default function ConverterPage() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [pdfName, setPdfName] = useState('easy-converter.pdf');
+  const [pageSize, setPageSize] = useState('auto');
   const [isConverting, setIsConverting] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const dragImage = useRef<number | null>(null);
@@ -196,21 +205,50 @@ export default function ConverterPage() {
           reader.readAsDataURL(imageFile.file);
         });
       };
-
-      const firstImage = await readImage(images[0]);
       
-      const doc = new jsPDF({
-        orientation: firstImage.width > firstImage.height ? 'l' : 'p',
-        unit: 'px',
-        format: [firstImage.width, firstImage.height]
-      });
-      doc.addImage(firstImage.data, firstImage.type, 0, 0, firstImage.width, firstImage.height);
+      let doc: any;
 
-      for (let i = 1; i < images.length; i++) {
+      if (pageSize === 'auto') {
+          const firstImage = await readImage(images[0]);
+          const orientation = firstImage.width > firstImage.height ? 'l' : 'p';
+          doc = new jsPDF({
+              orientation: orientation,
+              unit: 'px',
+              format: [firstImage.width, firstImage.height]
+          });
+          doc.addImage(firstImage.data, firstImage.type, 0, 0, firstImage.width, firstImage.height);
+      } else {
+          const format = PAGE_SIZES[pageSize];
+          doc = new jsPDF({
+              orientation: format.width > format.height ? 'l' : 'p',
+              unit: 'pt',
+              format: pageSize
+          });
+      }
+
+      const startIndex = pageSize === 'auto' ? 1 : 0;
+      for (let i = startIndex; i < images.length; i++) {
         const { data, width, height, type } = await readImage(images[i]);
-        const orientation = width > height ? 'l' : 'p';
-        doc.addPage([width, height], orientation);
-        doc.addImage(data, type, 0, 0, width, height);
+        
+        if (pageSize === 'auto') {
+            const orientation = width > height ? 'l' : 'p';
+            doc.addPage([width, height], orientation);
+            doc.addImage(data, type, 0, 0, width, height);
+        } else {
+            if(i > 0) doc.addPage();
+            const format = PAGE_SIZES[pageSize];
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            
+            const ratio = Math.min(pageWidth / width, pageHeight / height);
+            const imgWidth = width * ratio;
+            const imgHeight = height * ratio;
+
+            const x = (pageWidth - imgWidth) / 2;
+            const y = (pageHeight - imgHeight) / 2;
+
+            doc.addImage(data, type, x, y, imgWidth, imgHeight);
+        }
       }
       
       const finalPdfName = pdfName.trim() ? (pdfName.endsWith('.pdf') ? pdfName : `${pdfName}.pdf`) : 'easy-converter.pdf';
@@ -260,7 +298,7 @@ export default function ConverterPage() {
                   <Home className="h-4 w-4" />
                 </Link>
               </Button>
-              <h1 className="font-headline text-4xl sm:text-5xl font-bold text-foreground">Easy Convertor</h1>
+              <h1 className="font-headline text-4xl sm:text-5xl font-bold text-foreground">Easy Converter</h1>
               <p className="text-muted-foreground mt-2 text-lg">Convert your images to PDF in three simple steps.</p>
             </header>
 
@@ -343,37 +381,54 @@ export default function ConverterPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileDown className="text-primary"/>
-                    Step 3: Create and Download
+                    Step 3: Configure and Download
                   </CardTitle>
-                  <CardDescription>Name your PDF file and click the button to generate and download it.</CardDescription>
+                  <CardDescription>Set the page size, name your file, and click the button to generate and download it.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Input
-                      placeholder="Enter PDF name"
-                      value={pdfName}
-                      onChange={(e) => setPdfName(e.target.value)}
-                      className="flex-grow"
-                    />
-                    <Button
-                      onClick={createPdf}
-                      disabled={isConverting || images.length === 0}
-                      className="w-full sm:w-auto"
-                      size="lg"
-                    >
-                      {isConverting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Converting...
-                        </>
-                      ) : (
-                        <>
-                          <FileDown className="mr-2 h-4 w-4" />
-                          Create & Download PDF
-                        </>
-                      )}
-                    </Button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <Label htmlFor="pdf-name">PDF File Name</Label>
+                        <Input
+                          id="pdf-name"
+                          placeholder="Enter PDF name"
+                          value={pdfName}
+                          onChange={(e) => setPdfName(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="page-size">Page Size</Label>
+                         <Select value={pageSize} onValueChange={setPageSize}>
+                            <SelectTrigger id="page-size">
+                                <SelectValue placeholder="Select page size" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="auto">Auto (image size)</SelectItem>
+                                <SelectItem value="a4">A4</SelectItem>
+                                <SelectItem value="a3">A3</SelectItem>
+                                <SelectItem value="letter">Letter</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                   </div>
+                  <Button
+                    onClick={createPdf}
+                    disabled={isConverting || images.length === 0}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isConverting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Converting...
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Create & Download PDF
+                      </>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             )}
