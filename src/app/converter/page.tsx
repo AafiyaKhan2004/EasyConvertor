@@ -4,7 +4,7 @@
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { UploadCloud, FileDown, GripVertical, X, Loader2, Home, Newspaper } from 'lucide-react';
+import { UploadCloud, FileDown, GripVertical, X, Loader2, Home, Newspaper, AspectRatio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -84,6 +84,7 @@ export default function ConverterPage() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [pdfName, setPdfName] = useState('easy-converter.pdf');
   const [pageSize, setPageSize] = useState('auto');
+  const [orientation, setOrientation] = useState('auto');
   const [isConverting, setIsConverting] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const dragImage = useRef<number | null>(null);
@@ -207,52 +208,47 @@ export default function ConverterPage() {
       };
       
       let doc: any;
+      const firstImage = await readImage(images[0]);
+
+      let docOptions: any = {};
 
       if (pageSize === 'auto') {
-          const firstImage = await readImage(images[0]);
-          const orientation = firstImage.width > firstImage.height ? 'l' : 'p';
-          doc = new jsPDF({
-              orientation: orientation,
-              unit: 'px',
-              format: [firstImage.width, firstImage.height]
-          });
-          doc.addImage(firstImage.data, firstImage.type, 0, 0, firstImage.width, firstImage.height);
+        docOptions.orientation = orientation === 'auto' ? (firstImage.width > firstImage.height ? 'l' : 'p') : (orientation === 'landscape' ? 'l' : 'p');
+        docOptions.unit = 'px';
+        docOptions.format = [firstImage.width, firstImage.height];
       } else {
-          const format = PAGE_SIZES[pageSize];
-          doc = new jsPDF({
-              orientation: format.width > format.height ? 'l' : 'p',
-              unit: 'pt',
-              format: pageSize
-          });
+        docOptions.orientation = orientation === 'auto' ? (PAGE_SIZES[pageSize].width > PAGE_SIZES[pageSize].height ? 'l' : 'p') : (orientation === 'landscape' ? 'l' : 'p');
+        docOptions.unit = 'pt';
+        docOptions.format = pageSize;
+      }
+      
+      doc = new jsPDF(docOptions);
+
+      const addImageToPage = (imgData: {data: string, width: number, height: number, type: string}) => {
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        
+        const ratio = Math.min(pageWidth / imgData.width, pageHeight / imgData.height);
+        const imgWidth = imgData.width * ratio;
+        const imgHeight = imgData.height * ratio;
+
+        const x = (pageWidth - imgWidth) / 2;
+        const y = (pageHeight - imgHeight) / 2;
+
+        doc.addImage(imgData.data, imgData.type, x, y, imgWidth, imgHeight);
       }
 
-      const startIndex = pageSize === 'auto' ? 1 : 0;
-      for (let i = startIndex; i < images.length; i++) {
-        const { data, width, height, type } = await readImage(images[i]);
-        
-        if (pageSize === 'auto') {
-            const orientation = width > height ? 'l' : 'p';
-            doc.addPage([width, height], orientation);
-            doc.addImage(data, type, 0, 0, width, height);
-        } else {
-            if(i > 0) doc.addPage();
-            const format = PAGE_SIZES[pageSize];
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
-            
-            const ratio = Math.min(pageWidth / width, pageHeight / height);
-            const imgWidth = width * ratio;
-            const imgHeight = height * ratio;
+      addImageToPage(firstImage);
 
-            const x = (pageWidth - imgWidth) / 2;
-            const y = (pageHeight - imgHeight) / 2;
-
-            doc.addImage(data, type, x, y, imgWidth, imgHeight);
-        }
+      for (let i = 1; i < images.length; i++) {
+        const imgData = await readImage(images[i]);
+        doc.addPage();
+        addImageToPage(imgData);
       }
       
       const finalPdfName = pdfName.trim() ? (pdfName.endsWith('.pdf') ? pdfName : `${pdfName}.pdf`) : 'easy-converter.pdf';
       doc.save(finalPdfName);
+
     } catch (error) {
       console.error("Failed to create PDF:", error);
       toast({
@@ -396,7 +392,20 @@ export default function ConverterPage() {
                           onChange={(e) => setPdfName(e.target.value)}
                         />
                     </div>
-                    <div>
+                     <div>
+                        <Label htmlFor="page-orientation">Page Orientation</Label>
+                         <Select value={orientation} onValueChange={setOrientation}>
+                            <SelectTrigger id="page-orientation">
+                                <SelectValue placeholder="Select orientation" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="auto">Auto</SelectItem>
+                                <SelectItem value="portrait">Portrait</SelectItem>
+                                <SelectItem value="landscape">Landscape</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="sm:col-span-2">
                         <Label htmlFor="page-size">Page Size</Label>
                          <Select value={pageSize} onValueChange={setPageSize}>
                             <SelectTrigger id="page-size">
@@ -439,3 +448,5 @@ export default function ConverterPage() {
     </>
   );
 }
+
+    
