@@ -28,58 +28,6 @@ const PAGE_SIZES: { [key: string]: { width: number, height: number } } = {
   letter: { width: 612, height: 792 },
 };
 
-function AdSlot() {
-  const adRef = useRef<HTMLDivElement>(null);
-  const [isAdVisible, setIsAdVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsAdVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (adRef.current) {
-      observer.observe(adRef.current);
-    }
-
-    return () => {
-      if (adRef.current) {
-        observer.unobserve(adRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isAdVisible) {
-      try {
-        // @ts-ignore
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (err) {
-        console.error("AdSense error:", err);
-      }
-    }
-  }, [isAdVisible]);
-
-  return (
-    <aside ref={adRef} className="w-40 sticky top-8 hidden xl:block">
-      <div className="h-full w-full border-2 border-red-500 bg-red-100/50">
-        <ins className="adsbygoogle"
-            style={{ display: 'block' }}
-            data-ad-client="ca-pub-4573761203080537"
-            data-ad-slot="6635979897"
-            data-ad-format="auto"
-            data-full-width-responsive="true"></ins>
-      </div>
-    </aside>
-  );
-}
-
-
 export default function ConverterPage() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [pdfName, setPdfName] = useState('easy-converter.pdf');
@@ -286,7 +234,6 @@ export default function ConverterPage() {
       </Head>
       <main className="min-h-screen p-4 sm:p-8">
         <div className="flex justify-center gap-8">
-          <AdSlot />
           <div className="max-w-5xl w-full flex-shrink-0 space-y-8">
             <header className="text-center relative">
               <Button variant="outline" size="icon" className="absolute top-0 left-0" asChild>
@@ -442,11 +389,8 @@ export default function ConverterPage() {
               </Card>
             )}
           </div>
-          <AdSlot />
         </div>
       </main>
     </>
   );
 }
-
-    
